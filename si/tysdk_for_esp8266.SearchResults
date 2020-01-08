@@ -1,0 +1,12 @@
+---- app_init Matches (11 in 4 files) ----
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):VOID app_init(VOID)
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):      PR_ERR("app_init 01");
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):      // PR_ERR("app_init");
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):      PR_ERR("app_init 02");
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):      PR_ERR("app_init 03");
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):      PR_ERR("app_init 04");
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):      PR_ERR("app_init 05");
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):     //app_init();
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\esp_12f_plug\user):VOID app_init(VOID)
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\sample_pk\user):VOID app_init(VOID)
+Smart_wf_frame.h (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_common\include):*        must be called in app_init
