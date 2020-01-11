@@ -9,6 +9,9 @@
 #include "gpio.h"
 #include "tuya_smart_api.h"
 #include "wf_sdk_adpt.h"
+
+#include "CMT2300drive.h"
+
 /***********************************************************
 *************************micro define***********************
 ***********************************************************/
@@ -21,7 +24,8 @@
 #define DEVICE_PART   "device_part"
 #define APPT_POSIX_KEY   "appt_posix_key"
 #define POWER_STAT_KEY  "power_stat_key"
-  
+#define RF_USER_ID_KEY  "power_stat_key"
+
 #define TIME_POSIX_2016 1451577600 //2016年时间戳
   
   // reset key define
@@ -50,10 +54,20 @@ typedef struct
     THREAD msg_thread;
     THREAD sec_thread;   
     THREAD adc_thread;
+	THREAD rf_rec_thread;
+	THREAD rf_del_thread;
+	THREAD led_thread;
     SEM_HANDLE press_key_sem;
     SEM_HANDLE sec_up_sem; 
+	MSG_QUE_HANDLE ledMsgQueenHandle;
+	MSG_QUE_HANDLE rfMsgQueenHandle;
 }TY_MSG_S;
-  
+
+enum{
+	msgLedId,
+	msgRfId
+};
+
 /***********************************************************
 *************************variable define********************
 ***********************************************************/
@@ -80,7 +94,11 @@ static uint16 adc_value = 0;
 static uint32 tem_resist = 0;   // 单位k
 static uint16 temperature = 25;
 static uint8   tem_alarm = 0;
-
+// 增加led处理相关变量
+byte getstr[LEN+1];
+static bool rfStudy_flag=false;
+static MSG_LIST* ledMsg=NULL;
+static MSG_LIST* rfMsg=NULL;
 
 //单位： 0.1k 欧姆
 #define TEMP_25  100
@@ -108,6 +126,10 @@ static uint8   tem_alarm = 0;
 *************************function define***********************
 ***********************************************************/
 static void adc_proc();
+static void rf_recv_task();
+static void rf_proc_task();
+static void led_proc_task();
+
 STATIC VOID key_process(INT gpio_no,PUSH_KEY_TYPE_E type,INT cnt);
 STATIC VOID wfl_timer_cb(UINT timerID,PVOID pTimerArg);
 STATIC OPERATE_RET device_differ_init(VOID);
@@ -661,8 +683,8 @@ VOID app_init(VOID)
 	   PR_ERR("POWER_LED error");
       }
 	  
-      op_ret = tuya_create_led_handle(WF_DIR_LED,&wf_light);
-      if( OPRT_OK  != op_ret ) {
+     op_ret = tuya_create_led_handle(WF_DIR_LED,&wf_light);
+     if( OPRT_OK  != op_ret ) {
 	   PR_ERR("POWER_LED error");
       }
 	  
@@ -683,6 +705,7 @@ VOID app_init(VOID)
       PR_ERR("app_init 05");
       set_ap_ssid("SmartLife");
 }
+
  
 /***********************************************************
 *  Function: device_init
@@ -719,7 +742,7 @@ OPERATE_RET device_init(VOID)
       
      ID = tuya_get_devid();
      PR_NOTICE("ID:%s",ID);
-	 
+ 
      op_ret = tuya_create_led_handle(POWER_CTRL,&power_ctrl);
      if(OPRT_OK  != op_ret) {
 	  return op_ret;
@@ -730,7 +753,7 @@ OPERATE_RET device_init(VOID)
 	  return op_ret;
      }
 	  
-     op_ret = tuya_create_led_handle(WF_DIR_LED,&wf_light);
+    op_ret = tuya_create_led_handle(WF_DIR_LED,&wf_light);
      if(OPRT_OK  != op_ret) {
 	  return op_ret;
      }
@@ -759,6 +782,18 @@ OPERATE_RET device_init(VOID)
      if(OPRT_OK != op_ret) {
 	  return op_ret;
      }
+	 // 创建一个消息队列 led
+	 op_ret = CreateMsgQueAndInit(&ty_msg.ledMsgQueenHandle);
+	 if(op_ret!=OPRT_OK)
+	 {
+		return op_ret;
+	 }
+	  // 创建一个消息队列 rf
+	 op_ret = CreateMsgQueAndInit(&ty_msg.rfMsgQueenHandle);
+	 if(op_ret!=OPRT_OK)
+	 {
+		return op_ret;
+	 }
 	
      op_ret = CreateAndStart(&ty_msg.msg_thread,msg_proc,NULL,1024,TRD_PRIO_3,"ty_task");
      if(op_ret != OPRT_OK) {
@@ -798,6 +833,22 @@ OPERATE_RET device_init(VOID)
      if( op_ret != OPRT_OK) {
 	  return op_ret;
      }
+	// 创建一个射频接收任务函数
+	 op_ret = CreateAndStart(&ty_msg.rf_rec_thread,rf_recv_task,NULL,1024,TRD_PRIO_6,"rf_recv_task");
+     if( op_ret != OPRT_OK) {
+	  return op_ret;
+     }
+	// 创建一个射频数据处理任务函数
+	op_ret = CreateAndStart(&ty_msg.rf_del_thread,rf_proc_task,NULL,1024,TRD_PRIO_6,"rf_proc_task");
+     if( op_ret != OPRT_OK) {
+	  return op_ret;
+     }
+	 
+	// 创建一个led 任务函数
+	 op_ret = CreateAndStart(&ty_msg.led_thread,led_proc_task,NULL,1024,TRD_PRIO_6,"led_proc_task");
+     if( op_ret != OPRT_OK) {
+	  return op_ret;
+     }
 	 
      op_ret = device_differ_init();
      if( op_ret != OPRT_OK) {
@@ -815,15 +866,40 @@ STATIC VOID key_process(INT gpio_no,PUSH_KEY_TYPE_E type,INT cnt)
       PR_DEBUG("gpio_no: %d",gpio_no);
       PR_DEBUG("type: %d",type);
       PR_DEBUG("cnt: %d",cnt);
-      
+	  
+      MSG_ID id=msgLedId;
+	  P_MSG_DATA data="led";
+	  MSG_DATA_LEN len=sizeof(data);
+	  
       if( WF_RESET_KEY == gpio_no) {
-	   if( LONG_KEY == type) {
-	        tuya_dev_reset_factory();
-	   }
-	   else {
-	        ty_msg.power ^= 1;
+	  	
+		if( LONG_KEY == type) {
+			PR_DEBUG("###### LONG_KEY EVENT OCCUR");
+		    tuya_dev_reset_factory();
+		}
+		else if(SEQ_KEY==type){
+			PR_DEBUG("###### SEQ_KEY EVENT OCCUR ");
+			if(cnt==3)
+			{
+				PR_DEBUG("###### send a message");
+				rfStudy_flag = TRUE; // 进入学习状态
+				PostMessage(ty_msg.ledMsgQueenHandle,id,data,len);
+
+				
+				id=msgRfId;
+				PostMessage(ty_msg.rfMsgQueenHandle,id,data,len);// test
+				OPERATE_RET op_ret = tuya_psm_set_single(DEVICE_MOD,RF_USER_ID_KEY,"this is test PSM");
+				if(op_ret!=OPRT_OK)
+					PR_DEBUG(">>>>> tuya_psm_set_single is failed");
+			}
+		}
+		else {
+			PR_DEBUG("###### NORMAL_KEY EVENT OCCUR");
+			if(rfStudy_flag)
+				rfStudy_flag=FALSE;
+		    ty_msg.power ^= 1;
 		 	PostSemaphore(ty_msg.press_key_sem);
-           }
+		}
       }
 }
 
@@ -837,8 +913,12 @@ STATIC OPERATE_RET device_differ_init(VOID)
      if( OPRT_OK  != op_ret) {
 	  return op_ret;
      }
-     tuya_set_kb_seq_enable(FALSE);
-     tuya_set_kb_trig_type(WF_RESET_KEY,KEY_UP_TRIG,FALSE);
+     //tuya_set_kb_seq_enable(FALSE); 
+     //tuya_set_kb_trig_type(WF_RESET_KEY,KEY_UP_TRIG,FALSE);
+
+	 tuya_set_kb_seq_enable(TRUE);  // XWH 2020/1/10
+     tuya_set_kb_trig_type(WF_RESET_KEY,KEY_DOWN_TRIG,TRUE); // XWH 2020/1/10
+	 
      // register key to process
      op_ret = tuya_kb_reg_proc(WF_RESET_KEY,3000,key_process);
      if( OPRT_OK  != op_ret) {
@@ -1019,3 +1099,229 @@ static void adc_proc()
 	  }
      }	  
 }  
+
+/***********************************************************
+function_name: rf_id_check
+arg: uid 
+return: OPERATE_RET
+note:查询该设备是否已经配对
+***********************************************************/
+static OPERATE_RET rf_id_check(char* uid)
+{
+	OPERATE_RET op_ret;
+	char* userId=(char*)malloc(sizeof(char)*256);
+	if(!userId)
+		return OPRT_MALLOC_FAILED;
+	
+	op_ret = tuya_psm_get_single(DEVICE_MOD,RF_USER_ID_KEY,userId,256);
+	if(op_ret!=OPRT_OK)
+	{
+		PR_DEBUG(">>>>> tuya_psm_get_single RF_USER_ID_KEY FAILED");
+		goto END;
+	}
+	PR_DEBUG(">>>>:userId:%s",userId);	
+	// 查找指定uid是否存在
+	if(strstr(userId,uid)!=NULL)
+	{
+		free(userId);
+		userId=NULL;
+		return OPRT_OK;
+	}
+END:
+	free(userId);
+	userId=NULL;
+	return OPRT_COM_ERROR;
+}
+
+/***********************************************************
+function_name: rf_add_del_id
+arg1: uid 
+arg2: sel (true:增加uid  false: 删除uid)
+return: OPERATE_RET
+note:从flash 中增加或者删除指定uid
+***********************************************************/
+static OPERATE_RET rf_add_del_id(char* uid,bool sel)
+{
+	OPERATE_RET op_ret;
+	
+	char* userId=(char*)malloc(sizeof(char)*256);
+	if(!userId)
+		return OPRT_MALLOC_FAILED;
+	
+	op_ret = tuya_psm_get_single(DEVICE_MOD,RF_USER_ID_KEY,userId,256);
+	if(op_ret!=OPRT_OK)
+	{
+		PR_DEBUG(">>>>> tuya_psm_get_single RF_USER_ID_KEY FAILED");
+		goto END;
+	}
+	if(sel) // 增加uid
+	{
+		if(sizeof(userId)+sizeof(uid)>=256)
+			goto END;
+		strcat(userId,uid);
+		op_ret = tuya_psm_set_single(DEVICE_MOD,RF_USER_ID_KEY,userId);
+		if(op_ret!=OPRT_OK)
+			goto END;
+		else
+			goto OPR_OK;
+	}else{ // 删除uid
+		char* token1=strtok(userId,uid);
+		if(token1!=NULL)
+		{
+			char* token2=strtok(NULL,uid);
+			if(!token2)
+			{
+				strcpy(userId,token1);
+				strcat(userId,token2);
+				PR_DEBUG(">>>>>>>userId:%s",userId);
+				op_ret = tuya_psm_set_single(DEVICE_MOD,RF_USER_ID_KEY,userId);
+				if(op_ret==OPRT_OK)
+					goto OPR_OK;
+			}
+		}
+	}	
+END:
+	free(userId);
+	userId=NULL;
+	return OPRT_COM_ERROR;
+
+OPR_OK:
+	free(userId);
+	userId=NULL;
+	return OPRT_OK;
+		
+}
+
+/***********************************************************
+function_name: rf_event_proc
+arg1: uid 
+return: OPERATE_RET
+note:解析射频数据，控制电源开关
+***********************************************************/
+static OPERATE_RET rf_event_proc(char* uid)
+{
+	return OPRT_OK;
+}
+
+/***********************************************************
+function_name: rf_recv_task
+arg1: void 
+return: void
+note:检测射频数据任务函数
+***********************************************************/
+
+static void rf_recv_task()
+{
+	byte tmp,i;
+	MSG_ID id=msgRfId;
+	P_MSG_DATA data="rf";
+	MSG_DATA_LEN len=sizeof(data);
+	 
+	CMT2300_Init();
+	setup_Rx();
+	while(1){
+		if(GPO3_H())
+		{
+		  PR_DEBUG(">>>>> detect data coming... \r\n");
+		  radio.bGoStandby();
+		  tmp = radio.bGetMessage(getstr);  //仿真到此能看到getstr收到的数据包
+		  strcpy(data,getstr);
+		  PostMessage(ty_msg.rfMsgQueenHandle,id,data,len);
+		  PR_DEBUG(">>>>>:getstr:%s data:%s\r\n",getstr,data);
+		  radio.bIntSrcFlagClr();
+		  radio.vClearFIFO(); 
+		  radio.bGoRx();                                 
+		}	
+	}
+}
+
+
+/***********************************************************
+function_name: rf_proc_task
+arg1: void 
+return: void
+note:射频数据处理任务函数
+***********************************************************/
+
+static void rf_proc_task()
+{
+	int num;
+	OPERATE_RET op_ret;
+	rfMsg = (MSG_LIST*)malloc(sizeof(MSG_LIST));
+	if(!rfMsg)
+		return ;
+	while(1){
+		if(GetMsgNodeNum(ty_msg.rfMsgQueenHandle,&num)==OPRT_OK&&num>0)
+		{
+			if(GetMsgNodeFromQueue(ty_msg.rfMsgQueenHandle,msgRfId,&rfMsg)==OPRT_OK)
+			{
+				PR_DEBUG(">>>>msgID:%d msgDataLen: %d pMsgData:%s ",rfMsg->msg.msgID,rfMsg->msg.msgDataLen,
+														rfMsg->msg.pMsgData);
+				op_ret = rf_id_check(rfMsg->msg.pMsgData);
+				
+				if(rfStudy_flag)
+				{
+					if(op_ret==OPRT_OK)// 从FLASH中删除对应的UID
+					{
+						rf_add_del_id(rfMsg->msg.pMsgData,false);
+					}else{  // 添加UID到FLASH 中
+						rf_add_del_id(rfMsg->msg.pMsgData,true);
+					}
+				}else{
+					if(op_ret==OPRT_OK) // 处理具体开关事件
+					{
+						rf_event_proc(rfMsg->msg.pMsgData);
+					}	
+				}
+				DelAndFreeMsgNodeFromQueue(ty_msg.rfMsgQueenHandle,rfMsg);
+			}
+		}
+	}
+}
+/***********************************************************
+function_name: led_proc_task
+arg1: void 
+return: void
+note:led状态处理任务函数
+***********************************************************/
+
+static void led_proc_task()
+{
+	OPERATE_RET op_ret;
+	int num;
+	ledMsg = (MSG_LIST*)malloc(sizeof(MSG_LIST));
+	if(!ledMsg)
+		return ;
+	while(1){
+		  if(GetMsgNodeNum(ty_msg.ledMsgQueenHandle,&num)==OPRT_OK&&num>0) 
+		  {
+		  	PR_DEBUG(">>>>>>>num:%d",num);
+			if(GetMsgNodeFromQueue(ty_msg.ledMsgQueenHandle,msgLedId,&ledMsg)==OPRT_OK)
+			{		
+				PR_DEBUG(">>>>msgID:%d msgDataLen: %d pMsgData:%s ",ledMsg->msg.msgID,ledMsg->msg.msgDataLen,
+														ledMsg->msg.pMsgData);
+				if(!rfStudy_flag) // 防止用户错误按键
+				{
+					DelAndFreeMsgNodeFromQueue(ty_msg.ledMsgQueenHandle,ledMsg);
+					continue;
+				}
+				
+				GPIO_OUTPUT_SET(WF_DIR_LED,0); // 两短一长
+				SystemSleep(300);
+				GPIO_OUTPUT_SET(WF_DIR_LED,1);
+				SystemSleep(300);
+				GPIO_OUTPUT_SET(WF_DIR_LED,0);
+				SystemSleep(300);
+				GPIO_OUTPUT_SET(WF_DIR_LED,1);
+				SystemSleep(300);
+				GPIO_OUTPUT_SET(WF_DIR_LED,0);
+				SystemSleep(1000);
+				GPIO_OUTPUT_SET(WF_DIR_LED,1);
+				SystemSleep(100);
+				
+			}	
+		  }
+	}
+}
+
+
