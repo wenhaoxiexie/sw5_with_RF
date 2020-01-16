@@ -24,7 +24,10 @@
 #define DEVICE_PART   "device_part"
 #define APPT_POSIX_KEY   "appt_posix_key"
 #define POWER_STAT_KEY  "power_stat_key"
-#define RF_USER_ID_KEY  "power_stat_key"
+
+#define RF_MOD    "device_mod"
+#define RF_PART   "device_part"
+#define RF_USER_ID_KEY  "rfUser_stat_key"
 
 #define TIME_POSIX_2016 1451577600 //2016年时间戳
   
@@ -739,7 +742,7 @@ OPERATE_RET device_init(VOID)
 	  return op_ret;
      }
 //#endif
-      
+   
      ID = tuya_get_devid();
      PR_NOTICE("ID:%s",ID);
  
@@ -875,6 +878,7 @@ STATIC VOID key_process(INT gpio_no,PUSH_KEY_TYPE_E type,INT cnt)
 	  	
 		if( LONG_KEY == type) {
 			PR_DEBUG("###### LONG_KEY EVENT OCCUR");
+			tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,"#");
 		    tuya_dev_reset_factory();
 		}
 		else if(SEQ_KEY==type){
@@ -884,13 +888,6 @@ STATIC VOID key_process(INT gpio_no,PUSH_KEY_TYPE_E type,INT cnt)
 				PR_DEBUG("###### send a message");
 				rfStudy_flag = TRUE; // 进入学习状态
 				PostMessage(ty_msg.ledMsgQueenHandle,id,data,len);
-
-				
-				id=msgRfId;
-				PostMessage(ty_msg.rfMsgQueenHandle,id,data,len);// test
-				OPERATE_RET op_ret = tuya_psm_set_single(DEVICE_MOD,RF_USER_ID_KEY,"this is test PSM");
-				if(op_ret!=OPRT_OK)
-					PR_DEBUG(">>>>> tuya_psm_set_single is failed");
 			}
 		}
 		else {
@@ -1099,6 +1096,21 @@ static void adc_proc()
 	  }
      }	  
 }  
+/***********************************************************
+function_name: rf_data_valid_check
+arg1: uid 
+arg2: len
+return: OPERATE_RET
+note:检查数据是否有效数据
+包数据格式:  15   04   AA-AA-AA-AA-AA-AA-AA-AA   2DD4
+***********************************************************/
+static OPERATE_RET rf_data_valid_check(char* uid,uint8 len)
+{
+	if(len<12||uid[2]!=0XAA||uid[3]!=0XAA||uid[4]!=0XAA||  \
+		     uid[5]!=0XAA||uid[6]!=0XAA||uid[7]!=0XAA||uid[8]!=0XAA||uid[9]!=0XAA)
+		return OPRT_INVALID_PARM;
+	return OPRT_OK;
+}
 
 /***********************************************************
 function_name: rf_id_check
@@ -1109,19 +1121,26 @@ note:查询该设备是否已经配对
 static OPERATE_RET rf_id_check(char* uid)
 {
 	OPERATE_RET op_ret;
+	char tmpBuff[3]={0};
+	
 	char* userId=(char*)malloc(sizeof(char)*256);
 	if(!userId)
 		return OPRT_MALLOC_FAILED;
 	
-	op_ret = tuya_psm_get_single(DEVICE_MOD,RF_USER_ID_KEY,userId,256);
+	op_ret = tuya_psm_get_single(RF_MOD,RF_USER_ID_KEY,userId,256);
 	if(op_ret!=OPRT_OK)
 	{
-		PR_DEBUG(">>>>> tuya_psm_get_single RF_USER_ID_KEY FAILED");
-		goto END;
+		PR_DEBUG(">>>>> tuya_psm_get_single RF_USER_ID_KEY FAILED %d",op_ret);
+		op_ret = tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,"#");
+		if(op_ret!=OPRT_OK)
+			goto END;
 	}
-	PR_DEBUG(">>>>:userId:%s",userId);	
+	PR_DEBUG(">>>>:userId:%s",userId);
+
+	sprintf(tmpBuff,"%X",uid[0]);
+	PR_DEBUG(">>>>>tmpBuff:%s ",tmpBuff);
 	// 查找指定uid是否存在
-	if(strstr(userId,uid)!=NULL)
+	if(strstr(userId,tmpBuff)!=NULL)
 	{
 		free(userId);
 		userId=NULL;
@@ -1143,42 +1162,56 @@ note:从flash 中增加或者删除指定uid
 static OPERATE_RET rf_add_del_id(char* uid,bool sel)
 {
 	OPERATE_RET op_ret;
+	char tmpBuff[4]={0};
 	
 	char* userId=(char*)malloc(sizeof(char)*256);
 	if(!userId)
 		return OPRT_MALLOC_FAILED;
 	
-	op_ret = tuya_psm_get_single(DEVICE_MOD,RF_USER_ID_KEY,userId,256);
+	op_ret = tuya_psm_get_single(RF_MOD,RF_USER_ID_KEY,userId,256);
 	if(op_ret!=OPRT_OK)
 	{
 		PR_DEBUG(">>>>> tuya_psm_get_single RF_USER_ID_KEY FAILED");
 		goto END;
 	}
+	
 	if(sel) // 增加uid
 	{
 		if(sizeof(userId)+sizeof(uid)>=256)
 			goto END;
-		strcat(userId,uid);
-		op_ret = tuya_psm_set_single(DEVICE_MOD,RF_USER_ID_KEY,userId);
+		sprintf(tmpBuff,"%X#",uid[0]);
+		strcat(userId,tmpBuff);
+		PR_DEBUG(">>>>>>userId:%s ",userId);
+		op_ret = tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,userId);
 		if(op_ret!=OPRT_OK)
 			goto END;
 		else
 			goto OPR_OK;
 	}else{ // 删除uid
-		char* token1=strtok(userId,uid);
-		if(token1!=NULL)
+		sprintf(tmpBuff,"%X",uid[0]);
+		BYTE len = strlen(userId);
+		
+		PR_DEBUG(">>>>>>userId[%d]:%s ",len,userId);
+		
+		BYTE index=0,step=0;
+		
+		for(index;index<len;index++)
 		{
-			char* token2=strtok(NULL,uid);
-			if(!token2)
+			if(userId[index]==tmpBuff[0]&&userId[index+1]==tmpBuff[1])
 			{
-				strcpy(userId,token1);
-				strcat(userId,token2);
-				PR_DEBUG(">>>>>>>userId:%s",userId);
-				op_ret = tuya_psm_set_single(DEVICE_MOD,RF_USER_ID_KEY,userId);
-				if(op_ret==OPRT_OK)
-					goto OPR_OK;
+				step=3;
+			}
+			if(index<len-step)
+				userId[index]=userId[index+step];
+			else{
+				userId[index]='\0';
 			}
 		}
+		if(step!=3)
+			goto END;
+		op_ret = tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,userId);
+		if(op_ret==OPRT_OK)
+			goto OPR_OK;
 	}	
 END:
 	free(userId);
@@ -1197,9 +1230,51 @@ function_name: rf_event_proc
 arg1: uid 
 return: OPERATE_RET
 note:解析射频数据，控制电源开关
+             ID   KEY      preamble       syn
+包数据格式:  15   XX   AAAAAAAAAAAAAAAA   2DD4 
 ***********************************************************/
-static OPERATE_RET rf_event_proc(char* uid)
+static OPERATE_RET rf_event_proc(char* uid,uint32 len)
 {
+
+	BYTE keyId = uid[1]>>1;
+
+	switch(keyId&0X0F){
+		case 0x01:  // LBD
+			{
+				
+			}
+			break;
+		case 0x02: //  当前为关，需要打开
+			{
+				 if(ty_msg.power ^1)
+				 {
+					ty_msg.power ^= 1;
+				 	PostSemaphore(ty_msg.press_key_sem);
+				 }
+			}
+			break;
+		case 0x04: // 当前为开，需要关闭
+			{
+				if(ty_msg.power ^0)
+				{
+					ty_msg.power ^= 1;
+		 		 	PostSemaphore(ty_msg.press_key_sem);
+				}
+			}
+			break;
+		case 0x08:
+			{
+				//if(ty_msg.power ^1) // 避免重复开或者关
+				//{
+					//ty_msg.power ^= 1;
+		 		 	//PostSemaphore(ty_msg.press_key_sem);
+				//}
+			}
+			break;
+		default:
+			break;
+
+	}
 	return OPRT_OK;
 }
 
@@ -1209,29 +1284,29 @@ arg1: void
 return: void
 note:检测射频数据任务函数
 ***********************************************************/
-
 static void rf_recv_task()
 {
 	byte tmp,i;
 	MSG_ID id=msgRfId;
 	P_MSG_DATA data="rf";
 	MSG_DATA_LEN len=sizeof(data);
-	 
+	 int j=0;
 	CMT2300_Init();
 	setup_Rx();
 	while(1){
 		if(GPO3_H())
 		{
-		  PR_DEBUG(">>>>> detect data coming... \r\n");
 		  radio.bGoStandby();
 		  tmp = radio.bGetMessage(getstr);  //仿真到此能看到getstr收到的数据包
-		  strcpy(data,getstr);
+		  data = getstr;
+		  len = tmp;
 		  PostMessage(ty_msg.rfMsgQueenHandle,id,data,len);
-		  PR_DEBUG(">>>>>:getstr:%s data:%s\r\n",getstr,data);
+
 		  radio.bIntSrcFlagClr();
 		  radio.vClearFIFO(); 
-		  radio.bGoRx();                                 
+		  radio.bGoRx();      
 		}	
+		 
 	}
 }
 
@@ -1255,24 +1330,44 @@ static void rf_proc_task()
 		{
 			if(GetMsgNodeFromQueue(ty_msg.rfMsgQueenHandle,msgRfId,&rfMsg)==OPRT_OK)
 			{
-				PR_DEBUG(">>>>msgID:%d msgDataLen: %d pMsgData:%s ",rfMsg->msg.msgID,rfMsg->msg.msgDataLen,
-														rfMsg->msg.pMsgData);
+				op_ret = rf_data_valid_check(rfMsg->msg.pMsgData,rfMsg->msg.msgDataLen);
+				if(op_ret!=OPRT_OK)
+				{
+					DelAndFreeMsgNodeFromQueue(ty_msg.rfMsgQueenHandle,rfMsg);
+					continue;
+				}
+					
 				op_ret = rf_id_check(rfMsg->msg.pMsgData);
 				
 				if(rfStudy_flag)
 				{
 					if(op_ret==OPRT_OK)// 从FLASH中删除对应的UID
 					{
-						rf_add_del_id(rfMsg->msg.pMsgData,false);
-					}else{  // 添加UID到FLASH 中
-						rf_add_del_id(rfMsg->msg.pMsgData,true);
+						op_ret = rf_add_del_id(rfMsg->msg.pMsgData,false);
+						if(op_ret == OPRT_OK)
+						{
+							rfStudy_flag = FALSE;
+							PR_DEBUG(">>>>>>> rf_add_del_id del succeed");
+						}else{
+							PR_DEBUG(">>>>>>> rf_add_del_id del failed");
+						}
+					}else{              // 添加UID到FLASH 中
+						op_ret = rf_add_del_id(rfMsg->msg.pMsgData,true);
+						if(op_ret == OPRT_OK){
+							rfStudy_flag = FALSE;
+							PR_DEBUG(">>>>>>> rf_add_del_id add succeed");
+						}	
+						else{
+							PR_DEBUG(">>>>>>> rf_add_del_id add failed");
+						}	
 					}
 				}else{
 					if(op_ret==OPRT_OK) // 处理具体开关事件
 					{
-						rf_event_proc(rfMsg->msg.pMsgData);
+						rf_event_proc(rfMsg->msg.pMsgData,rfMsg->msg.msgDataLen);
 					}	
 				}
+
 				DelAndFreeMsgNodeFromQueue(ty_msg.rfMsgQueenHandle,rfMsg);
 			}
 		}
@@ -1295,11 +1390,8 @@ static void led_proc_task()
 	while(1){
 		  if(GetMsgNodeNum(ty_msg.ledMsgQueenHandle,&num)==OPRT_OK&&num>0) 
 		  {
-		  	PR_DEBUG(">>>>>>>num:%d",num);
 			if(GetMsgNodeFromQueue(ty_msg.ledMsgQueenHandle,msgLedId,&ledMsg)==OPRT_OK)
 			{		
-				PR_DEBUG(">>>>msgID:%d msgDataLen: %d pMsgData:%s ",ledMsg->msg.msgID,ledMsg->msg.msgDataLen,
-														ledMsg->msg.pMsgData);
 				if(!rfStudy_flag) // 防止用户错误按键
 				{
 					DelAndFreeMsgNodeFromQueue(ty_msg.ledMsgQueenHandle,ledMsg);

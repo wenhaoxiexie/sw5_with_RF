@@ -1,12 +1,10 @@
----- app_init Matches (11 in 4 files) ----
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):VOID app_init(VOID)
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):      PR_ERR("app_init 01");
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):      // PR_ERR("app_init");
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):      PR_ERR("app_init 02");
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):      PR_ERR("app_init 03");
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):      PR_ERR("app_init 04");
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):      PR_ERR("app_init 05");
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):     //app_init();
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\esp_12f_plug\user):VOID app_init(VOID)
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\sample_pk\user):VOID app_init(VOID)
-Smart_wf_frame.h (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_common\include):*        must be called in app_init
+---- RF_USER_ID_KEY Matches (9 in 1 files) ----
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):#define RF_USER_ID_KEY  "rfUser_stat_key"
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):			tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,"#");
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):	op_ret = tuya_psm_get_single(RF_MOD,RF_USER_ID_KEY,userId,256);
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):		PR_DEBUG(">>>>> tuya_psm_get_single RF_USER_ID_KEY FAILED %d",op_ret);
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):		op_ret = tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,"#");
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):	op_ret = tuya_psm_get_single(RF_MOD,RF_USER_ID_KEY,userId,256);
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):		PR_DEBUG(">>>>> tuya_psm_get_single RF_USER_ID_KEY FAILED");
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):		op_ret = tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,userId);
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):		op_ret = tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,userId);

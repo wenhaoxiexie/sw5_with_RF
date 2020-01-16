@@ -1,133 +1,122 @@
 #include "CMT2300drive.h"
 
 cmt2300aEasy radio;
-
-/*****此处通过RFPDK软件导出，然后更改每个数组中的参数 *****/
-/************************************************************
-频点:  433.92Mhz
-速率:  2.4Kpbs
-频偏:  +/-10Khz
-带宽:  +/-100khz
-数据包格式:
-		0xAAAAAAAAAAAAAAAA + 0x2DD4 +0x15 +"HopeRF RFM COBRFM300A" 
-
-发射功率: 13dBm
-**************************************************************/
-
-
+/**********************************************
+note : 参照文件2219B_DateRate40.exp 
+**********************************************/
 word CMTBank[12] = {
-					0x0000,
+					0x0002,
 					0x0166,
 					0x02EC,
 					0x031C,
-					0x04F0,
+					0x0430,
 					0x0580,
 					0x0614,
 					0x0708,
-					0x0891,
+					0x0811,
 					0x0902,
 					0x0A02,
-					0x0BD0
+					0x0B00
 				   };
 
 word SystemBank[12] = {
-					0x0CAE,
-					0x0DE0,
-					0x0E35,
-					0x0F00,
-					0x1000,
-					0x11F4,
-					0x1210,
-					0x13E2,
-					0x1442,
-					0x1520,
-					0x1600,
-					0x1781				  
-					};
-
+						0x0CAE,
+						0x0DE0,
+						0x0E70,
+						0x0F00,
+						0x1000,
+						0x11F4,
+						0x1210,
+						0x13E2,
+						0x1442,
+						0x1520,
+						0x1600,
+						0x1781
+					  };
+	
 word FrequencyBank[8] = {
-					0x1842,
-					0x1971,
-					0x1ACE,
-					0x1B1C,
-					0x1C42,
-					0x1D5B,
-					0x1E1C,
-					0x1F1C					
-						 };
-						 
+						0x1846,
+						0x196D,
+						0x1A80,
+						0x1B86,
+						0x1C46,
+						0x1D62,
+						0x1E27,
+						0x1F16
+						};
+
 word DataRateBank[24] = {
-					0x2032,
-					0x2118,
-					0x2200,
-					0x2399,
-					0x24E0,
-					0x2569,
-					0x2619,
-					0x2705,
-					0x289F,
-					0x2939,
-					0x2A29,
-					0x2B29,
-					0x2CC0,
-					0x2D51,
-					0x2E2A,
-					0x2F53,
-					0x3000,
-					0x3100,
-					0x32B4,
-					0x3300,
-					0x3400,
-					0x3501,
-					0x3600,
-					0x3700
-						};	   
+						0x2043,
+						0x2193,
+						0x22B1,
+						0x2333,
+						0x2400,
+						0x2500,
+						0x2600,
+						0x2700,
+						0x2800,
+						0x2900,
+						0x2A00,
+						0x2B29,
+						0x2CC0,
+						0x2D8A,
+						0x2E02,
+						0x2F6B,
+						0x3017,
+						0x3100,
+						0x3250,
+						0x3315,
+						0x3400,
+						0x3501,
+						0x3605,
+						0x3705
+						};
 
 word BasebandBank[29] = {
-					0x3812,
-					0x3908,
-					0x3A00,
-					0x3BAA,
-					0x3C02,
-					0x3D00,
-					0x3E00,
-					0x3F00,
-					0x4000,
-					0x4100,
-					0x4200,
-					0x43D4,
-					0x442D,
-					0x4501,
-					0x461F,
-					0x4700,
-					0x4800,
-					0x4900,
-					0x4A00,
-					0x4B00,
-					0x4C00,
-					0x4D00,
-					0x4E00,
-					0x4F60,
-					0x50FF,
-					0x5102,
-					0x5200,
-					0x531F,
-					0x5410	
-						};	
+						0x3842,
+						0x3908,
+						0x3A00,
+						0x3BAA,
+						0x3C02,
+						0x3D00,
+						0x3E00,
+						0x3F00,
+						0x4000,
+						0x4100,
+						0x4200,
+						0x43D4,
+						0x442D,
+						0x4500,
+						0x460B,
+						0x4700,
+						0x4800,
+						0x4900,
+						0x4A00,
+						0x4B00,
+						0x4C00,
+						0x4D00,
+						0x4E00,
+						0x4F60,
+						0x50FF,
+						0x5101,
+						0x5200,
+						0x531F,
+						0x5410
+						};
 
 word TXBank[11] = {
-					0x5550,
+					0x5541,
 					0x564D,
 					0x5706,
 					0x5800,
-					0x5942,
-					0x5AB0,
+					0x5900,
+					0x5A30,
 					0x5B00,
-					0x5C37,
-					0x5D0A,
+					0x5C03,
+					0x5D01,
 					0x5E3F,
-					0x5F7F															
-					    };	
+					0x5F7F
+				  };
 
 /**********************************************************
 **Name:     bGoStandby
@@ -147,7 +136,6 @@ bool bGoStandby(void)
  	Delay_us(6400);
 	tmp = (MODE_MASK_STA & Spi3.bSpi3Read(CMT23_MODE_STA));	
 	
-	PR_DEBUG(">>>>>tmp:%x \r\n",tmp);
 	if(tmp==MODE_STA_STBY)
 		break;
 	}
@@ -214,6 +202,7 @@ bool bGoRx(void)
  	//Delay_us(200);
  	Delay_us(3200);	
 	tmp = (MODE_MASK_STA & Spi3.bSpi3Read(CMT23_MODE_STA));	
+	
 	if(tmp==MODE_STA_RX)
 		break;
 	}
@@ -238,7 +227,7 @@ bool bGoSleep(void)
  
  Spi3.vSpi3Write(((word)CMT23_MODE_CTL<<8)+MODE_GO_SLEEP);	
  Delay_ms(100);		//enough?
- tmp = (MODE_MASK_STA & Spi3.bSpi3Read(CMT23_MODE_STA));	
+ tmp = (MODE_MASK_STA & Spi3.bSpi3Read(CMT23_MODE_STA));
  if(tmp==MODE_STA_SLEEP)
  	return(true);
  else
@@ -501,13 +490,10 @@ void vInit(void)
  Delay_ms(20);
 tmp1 = bGoStandby();
 
-PR_DEBUG("###########11111111111111111111############\r\n");
-
 if(tmp1 == false)
 {
 	while(1);
 }
-PR_DEBUG("###########22222222222222222222############\r\n");
 
  tmp = Spi3.bSpi3Read(CMT23_MODE_STA);
  tmp|= EEP_CPY_DIS;
@@ -684,7 +670,7 @@ void CMT2300_Band(void)
 	radio.vSetTxPayloadLength=vSetTxPayloadLength;
 	radio.vReadIngFlag1=vReadIngFlag1;
 	radio.vReadIngFlag2=vReadIngFlag2;
-
+ 
 	//CFG
 	radio.vInit=vInit;
 	radio.vCfgBank=vCfgBank;
@@ -705,7 +691,7 @@ void CMT2300_Init()
 	spi_init();
 	CMT2300_Band();
 	/**********基础设置初始化一次即可*******/
-	radio.FixedPktLength    = false;				
+	radio.FixedPktLength    = true;				
 	radio.PayloadLength     = LEN;	
 	radio.vInit();
 	radio.vCfgBank(CMTBank, 12);
@@ -729,8 +715,8 @@ void setup_Rx(void)
 	radio.vGpioFuncCfg(GPIO1_INT1+GPIO2_Dout+GPIO3_INT2);  //IO口的功能映射
 
 	//radio.vIntSrcCfg(INT_RSSI_VALID, INT_CRC_PASS);   //GPO3映射成CRC_pass中断，此处如果要用该中断，RFPDK需要配置CRC
-	radio.vIntSrcCfg(INT_TX_DONE, INT_PKT_DONE);  //GPO3映射成PKT_DONE中断 //IO口中断的映射
-	radio.vIntSrcEnable(PKT_DONE_EN + CRC_PASS_EN+TX_DONE_EN );          //中断使能 
+	radio.vIntSrcCfg(INT_PKT_DONE, INT_PKT_DONE);  //GPO3映射成PKT_DONE中断 //IO口中断的映射
+	radio.vIntSrcEnable(PKT_DONE_EN);          //中断使能 
 	
 	radio.vClearFIFO();
 	radio.bGoSleep();           //让配置生效

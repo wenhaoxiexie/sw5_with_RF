@@ -285,7 +285,7 @@
 #define	CMT23_EE_EXT_CTL		0x7B
 #define	CMT23_SOFTRST			0x7F
 
-#define LEN 21
+#define LEN 12
 
 typedef struct cmt2300aEasy{
 	bool RssiTrig;
