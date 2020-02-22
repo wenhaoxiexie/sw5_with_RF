@@ -1102,12 +1102,14 @@ arg1: uid
 arg2: len
 return: OPERATE_RET
 note:检查数据是否有效数据
-包数据格式:  15   04   AA-AA-AA-AA-AA-AA-AA-AA   2DD4
+  	12-byte		id       key    preamble       syn 
+包数据格式:  10 00 00 00   04   AA AA AA AA AA   2D D4
 ***********************************************************/
 static OPERATE_RET rf_data_valid_check(char* uid,uint8 len)
 {
-	if(len<12||uid[2]!=0XAA||uid[3]!=0XAA||uid[4]!=0XAA||  \
-		     uid[5]!=0XAA||uid[6]!=0XAA||uid[7]!=0XAA||uid[8]!=0XAA||uid[9]!=0XAA)
+	//PR_DEBUG("%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X ",uid[0],uid[1],uid[2],uid[3],uid[4],
+							//uid[5],uid[6],uid[7],uid[8],uid[9],uid[10],uid[11]);
+	if(uid[5]!=0XAA||uid[6]!=0XAA||uid[7]!=0XAA||uid[8]!=0XAA||uid[9]!=0XAA)
 		return OPRT_INVALID_PARM;
 	return OPRT_OK;
 }
@@ -1121,7 +1123,7 @@ note:查询该设备是否已经配对
 static OPERATE_RET rf_id_check(char* uid)
 {
 	OPERATE_RET op_ret;
-	char tmpBuff[3]={0};
+	char tmpBuff[9]={0};
 	
 	char* userId=(char*)malloc(sizeof(char)*256);
 	if(!userId)
@@ -1135,10 +1137,10 @@ static OPERATE_RET rf_id_check(char* uid)
 		if(op_ret!=OPRT_OK)
 			goto END;
 	}
-	PR_DEBUG(">>>>:userId:%s",userId);
+	//PR_DEBUG(">>>>:userId:%s",userId);
 
-	sprintf(tmpBuff,"%X",uid[0]);
-	PR_DEBUG(">>>>>tmpBuff:%s ",tmpBuff);
+	sprintf(tmpBuff,"%02X%02X%02X%02X",uid[0],uid[1],uid[2],uid[3]);
+	//PR_DEBUG(">>>>>tmpBuff:%s ",tmpBuff);
 	// 查找指定uid是否存在
 	if(strstr(userId,tmpBuff)!=NULL)
 	{
@@ -1162,7 +1164,7 @@ note:从flash 中增加或者删除指定uid
 static OPERATE_RET rf_add_del_id(char* uid,bool sel)
 {
 	OPERATE_RET op_ret;
-	char tmpBuff[4]={0};
+	char tmpBuff[10]={0};
 	
 	char* userId=(char*)malloc(sizeof(char)*256);
 	if(!userId)
@@ -1177,9 +1179,9 @@ static OPERATE_RET rf_add_del_id(char* uid,bool sel)
 	
 	if(sel) // 增加uid
 	{
-		if(sizeof(userId)+sizeof(uid)>=256)
+		if(strlen(userId)+8>=256) // uid 4个字节
 			goto END;
-		sprintf(tmpBuff,"%X#",uid[0]);
+		sprintf(tmpBuff,"%02X%02X%02X%02X#",uid[0],uid[1],uid[2],uid[3]);
 		strcat(userId,tmpBuff);
 		PR_DEBUG(">>>>>>userId:%s ",userId);
 		op_ret = tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,userId);
@@ -1188,27 +1190,28 @@ static OPERATE_RET rf_add_del_id(char* uid,bool sel)
 		else
 			goto OPR_OK;
 	}else{ // 删除uid
-		sprintf(tmpBuff,"%X",uid[0]);
-		BYTE len = strlen(userId);
+	
+		sprintf(tmpBuff,"%02X%02X%02X%02X",uid[0],uid[1],uid[2],uid[3]);
 		
-		PR_DEBUG(">>>>>>userId[%d]:%s ",len,userId);
-		
-		BYTE index=0,step=0;
-		
-		for(index;index<len;index++)
-		{
-			if(userId[index]==tmpBuff[0]&&userId[index+1]==tmpBuff[1])
-			{
-				step=3;
-			}
-			if(index<len-step)
-				userId[index]=userId[index+step];
-			else{
-				userId[index]='\0';
-			}
-		}
-		if(step!=3)
+		char *pUid = userId;
+		char idBuf[256]={0};
+				
+		char *tmp = strstr(userId,tmpBuff);
+		if(tmp==NULL)
 			goto END;
+		
+		strncpy(idBuf,pUid,(tmp-pUid));
+		
+		tmp+=9;
+	
+		PR_DEBUG(">>>>>>tmp:%s userId:%s  idBuf:%s ",tmp,userId,idBuf);
+		
+		if(tmp!=NULL)
+			strcat(idBuf,tmp);
+
+		strcpy(userId,idBuf);
+		PR_DEBUG(">>>>>>userId:%s ",userId);
+		
 		op_ret = tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,userId);
 		if(op_ret==OPRT_OK)
 			goto OPR_OK;
@@ -1230,13 +1233,13 @@ function_name: rf_event_proc
 arg1: uid 
 return: OPERATE_RET
 note:解析射频数据，控制电源开关
-             ID   KEY      preamble       syn
-包数据格式:  15   XX   AAAAAAAAAAAAAAAA   2DD4 
+                ID        KEY      preamble         syn
+包数据格式:  10000000     XX   AA AA AA AA AA       2DD4 
 ***********************************************************/
 static OPERATE_RET rf_event_proc(char* uid,uint32 len)
 {
 
-	BYTE keyId = uid[1]>>1;
+	BYTE keyId = uid[4]>>1;
 
 	switch(keyId&0X0F){
 		case 0x01:  // LBD
@@ -1301,7 +1304,6 @@ static void rf_recv_task()
 		  data = getstr;
 		  len = tmp;
 		  PostMessage(ty_msg.rfMsgQueenHandle,id,data,len);
-
 		  radio.bIntSrcFlagClr();
 		  radio.vClearFIFO(); 
 		  radio.bGoRx();      

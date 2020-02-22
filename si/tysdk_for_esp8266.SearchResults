@@ -1,10 +1,47 @@
----- RF_USER_ID_KEY Matches (9 in 1 files) ----
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):#define RF_USER_ID_KEY  "rfUser_stat_key"
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):			tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,"#");
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):	op_ret = tuya_psm_get_single(RF_MOD,RF_USER_ID_KEY,userId,256);
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):		PR_DEBUG(">>>>> tuya_psm_get_single RF_USER_ID_KEY FAILED %d",op_ret);
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):		op_ret = tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,"#");
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):	op_ret = tuya_psm_get_single(RF_MOD,RF_USER_ID_KEY,userId,256);
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):		PR_DEBUG(">>>>> tuya_psm_get_single RF_USER_ID_KEY FAILED");
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):		op_ret = tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,userId);
-Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):		op_ret = tuya_psm_set_single(RF_MOD,RF_USER_ID_KEY,userId);
+---- sprintf Matches (46 in 8 files) ----
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):	sprintf(tmpBuff,"%X%X%X%X",uid[0],uid[1],uid[2],uid[3]);
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):		sprintf(tmpBuff,"%02X%02X%02X%02X#",uid[0],uid[1],uid[2],uid[3]);
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\cuco_sw5_overheat_common\user):		sprintf(tmpBuff,"%02X%02X%02X%02X",uid[0],uid[1],uid[2],uid[3]);
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\esp_12f_plug\user):    sprintf(dp_buf,"%d",DP_SWITCH);
+Device.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\app\tuya_user\esp_12f_plug\user):    sprintf(dp_buf,"%d",DP_COUNT_DOWN);
+Esp_libc.h (e:\workpro\sharedfile\sw\tysdk_for_esp8266\include\espressif):int sprintf(char *out, const char *format, ...);
+Task.h (e:\workpro\sharedfile\sw\tysdk_for_esp8266\include\freertos):						sprintf( ( char * ) pcWriteBuffer, ( char * ) "%s\t\t%lu\t\t%lu%%\r\n", pxTaskStatusArray[ x ].pcTaskName, pxTaskStatusArray[ x ].ulRunTimeCounter, ulStatsAsPercentage );
+Task.h (e:\workpro\sharedfile\sw\tysdk_for_esp8266\include\freertos):						sprintf( ( char * ) pcWriteBuffer, ( char * ) "%s\t\t%lu\t\t<1%%\r\n", pxTaskStatusArray[ x ].pcTaskName, pxTaskStatusArray[ x ].ulRunTimeCounter );
+Task.h (e:\workpro\sharedfile\sw\tysdk_for_esp8266\include\freertos): * vTaskList() has a dependency on the sprintf() C library function that might
+Task.h (e:\workpro\sharedfile\sw\tysdk_for_esp8266\include\freertos): * functionality implementation of sprintf() is provided in many of the
+Task.h (e:\workpro\sharedfile\sw\tysdk_for_esp8266\include\freertos): * vTaskGetRunTimeStats() has a dependency on the sprintf() C library function
+Task.h (e:\workpro\sharedfile\sw\tysdk_for_esp8266\include\freertos): * limited functionality implementation of sprintf() is provided in many of the
+Test_bugreports.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(fname, "20K%i.txt", j);
+Test_bugreports.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):  sprintf(fname, "test.txt");
+Test_bugreports.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(fname, "file%i.txt", j);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "bigfile%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "bigfile%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "bigfile%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "bigfile%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "bigfile%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "bigfile%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(fname, "file%i", i);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(content, "%i", i);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(fname, "file%i", i);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(content, "%i", i);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(fname, "file%i", i);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(fname, "file%i", i);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(content, "new%i", i);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(fname, "file%i", i);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):      sprintf(content, "new%i", i);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):      sprintf(content, "%i", i);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "file%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "file%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "file%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "file%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "file%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "file%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "smallfile%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "smallfile%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "bigfile%i", f);
+Test_hydrogen.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):    sprintf(name, "bigfile%i", f);
+Test_spiffs.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):  sprintf(_path, "%s%s", TEST_PATH, name);
+Test_spiffs.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):        sprintf(_path, "%s%s", TEST_PATH, ep->d_name);
+Test_spiffs.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\spiffs_test\user):      sprintf(name, "file%i_%i", (1+run), i);
+Websocket.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\websocket_demo\websocket):	sprintf(sta_config.ssid, "B-LINK_845R");
+Websocket.c (e:\workpro\sharedfile\sw\tysdk_for_esp8266\examples\websocket_demo\websocket):	sprintf(sta_config.password, "000");

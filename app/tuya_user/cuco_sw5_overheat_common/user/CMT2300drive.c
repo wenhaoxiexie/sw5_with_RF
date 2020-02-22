@@ -2,7 +2,7 @@
 
 cmt2300aEasy radio;
 /**********************************************
-note : 参照文件2219B_DateRate40.exp 
+note : 参照文件5-pre-2219b.exp 
 **********************************************/
 word CMTBank[12] = {
 					0x0002,
@@ -73,7 +73,7 @@ word DataRateBank[24] = {
 						};
 
 word BasebandBank[29] = {
-						0x3842,
+						0x382A,
 						0x3908,
 						0x3A00,
 						0x3BAA,
